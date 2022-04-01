@@ -1,141 +1,290 @@
+#include <stdio.h>
+#include <string.h>
+#include <fcntl.h> // Contains file controls like O_RDWR
+#include <errno.h> // Error integer and strerror() function
+#include <termios.h> // Contains POSIX terminal control definitions
+#include <unistd.h> // write(), read(), close()
+#include <stdlib.h>
+#include <bits/stdc++.h>
 #include <iostream>
+#include <vector>
+#include <sstream>
+#include <cmath>
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h>
 
+class Point {
+public:
+    double x, y, z;
 
-static int resizeCallback(void *data, SDL_Event *event) //https://stackoverflow.com/questions/32294913/getting-contiunous-window-resize-event-in-sdl-2
-{
-	if (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_RESIZED)
-	{
-		SDL_Window *win = SDL_GetWindowFromID(event->window.windowID);
-		if (win == (SDL_Window *)data)
-		{
-			std::cout << "resizing.....\n";
-		}
-	}
-	return 0;
+    Point() {
+        this->x = 0;
+        this->y = 0;
+        this->z = 0;
+    }
+
+    Point(double x, double y, double z) {
+        this->x = x;
+        this->y = y;
+        this->z = z;
+    }
+
+    Point(double x, double y) {
+        this->x = x;
+        this->y = y;
+        this->z = 0;
+    }
+
+    double operator[](int i) const {
+        if (i == 0) return this->x;
+        if (i == 1) return this->y;
+        return this->z;
+    }
+
+    double& operator[](int i) {
+        if (i == 0) return this->x;
+        if (i == 1) return this->y;
+        return this->z;
+    }
+};
+
+typedef std::vector<double> Vector;
+typedef std::vector<Vector> Matrix;
+
+Matrix dot(const Matrix& a, const Matrix& b) {
+    Matrix result = Matrix(a.size(), Vector(b[0].size(), 0));
+    for (int i=0; i<a.size(); i++) {
+        for (int j=0; j<b[0].size(); j++) {
+            for (int k=0; k<b.size(); k++) {
+                result[i][j] += a[i][k] * b[k][j];
+            }
+        }
+    }
+    return result;
 }
 
-int main(int argc, char *argv[])
+Point transform(const Matrix& matrix, const Point& point) {
+    Matrix p = {{point.x}, {point.y}, {point.z}};
+    Matrix r = dot(matrix, p);
+    return Point(r[0][0], r[1][0], r[2][0]);
+}
+
+Point translate(const Point& shift, const Point& point) {
+    return Point(
+        point.x + shift.x,
+        point.y + shift.y,
+        point.z + shift.z
+    );
+}
+
+void connect(SDL_Renderer* const renderer, const std::vector<Point> &points, int i, int j) {
+    SDL_RenderDrawLine(
+        renderer,
+        points[i].x,
+        points[i].y,
+        points[j].x,
+        points[j].y
+    );
+}
+
+
+void tokenize(std::string s, std::string del = " ")
 {
-	SDL_Window *sdl_window = nullptr;
+    int start = 0;
+    int end = s.find(del);
+    while (end != -1) {
+        std::cout << s.substr(start, end - start) << " ";
+        start = end + del.size();
+        end = s.find(del, start);
+    }
+    std::cout << s.substr(start, end - start);
 
-	unsigned int window_flags = SDL_WINDOW_OPENGL;
+}
 
-	if (SDL_Init(SDL_INIT_VIDEO))
-	{
-		std::cout << "Failed to init SDL Video, error: " << SDL_GetError() << std::endl;
-		return -1;
-	}
+Matrix getRotationMatrix(double alpha, double gamma) {
+    // double alpha = 0; //0.001; // pitch
+    Matrix rotationX = {
+        {1, 0, 0},
+        {0, cos(alpha), -sin(alpha)},
+        {0, sin(alpha), cos(alpha)}
+    };
 
-	int win_width = 640;
-	int win_height = 480;
-	enum class SCREENSIZE
-	{
-		is640x480,
-		is1366x768,
-		fullscreen
-	} curr_screen_size = SCREENSIZE::is640x480,
-	  last_non_fullscreen_size = SCREENSIZE::is640x480;
+    double beta = 0; //0.002;
+    Matrix rotationY = {
+        {cos(beta), 0, sin(beta)},
+        {0, 1, 0},
+        {-sin(beta), 0, cos(beta)}
+    };
 
-	// Create an application window with the following settings:
-	sdl_window = SDL_CreateWindow(
-		"(F11: fullscreen F10: winresize ESC: quit)", // window title
-		SDL_WINDOWPOS_UNDEFINED,					  // initial x position
-		SDL_WINDOWPOS_UNDEFINED,					  // initial y position
-		win_width,									  // width, in pixels
-		win_height,									  // height, in pixels
-		window_flags								  // flags - see below
-	);
+    // double gamma = 0.002; // roll
+    Matrix rotationZ = {
+        {cos(gamma), -sin(gamma), 0},
+        {sin(gamma), cos(gamma), 0},
+        {0, 0, 1}
+    };
 
-	// Check that the window was successfully created
-	if (sdl_window == nullptr)
-	{
-		std::cout << "Could not create window: " << SDL_GetError() << std::endl;
-		return -1;
-	}
+    return dot(rotationZ, dot(rotationY, rotationX));
+}
 
-	SDL_AddEventWatch(resizeCallback, sdl_window);
+int main(int argc, char const *argv[])
+{
+	// Open the serial port. Change device path as needed (currently set to an standard FTDI USB-UART cable type device)
+  int serial_port = open("/dev/ttyACM0", O_RDWR);
 
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-	SDL_GLContext Context = SDL_GL_CreateContext(sdl_window);
+	printf("arg1 = %s\n", argv[1]);
+  // Create new termios struct, we call it 'tty' for convention
+  struct termios tty;
 
-	glClearColor(1.f, 0.f, 1.f, 0.f); //pink background
-	glViewport(0, 0, win_width, win_height);
+  // Read in existing settings, and handle any error
+  if(tcgetattr(serial_port, &tty) != 0) {
+      printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
+      return 1;
+  }
 
-	bool isRunning = true;
-	SDL_Event sdl_event;
-	while (isRunning)
-	{
-		// 1. check events
-		while (SDL_PollEvent(&sdl_event) != 0)
-		{
-			if (sdl_event.type == SDL_QUIT)
-			{
-				isRunning = false;
-			}
-			else if (sdl_event.type == SDL_KEYDOWN)
-			{
-				switch (sdl_event.key.keysym.sym)
-				{
-				case SDLK_ESCAPE:
-					isRunning = false;
-					break;
-				case SDLK_F11:
-					if (curr_screen_size != SCREENSIZE::fullscreen) // then set it to fullscreen and save prev state
-					{
-						last_non_fullscreen_size = curr_screen_size;
-						curr_screen_size = SCREENSIZE::fullscreen;
-						SDL_SetWindowFullscreen(sdl_window, window_flags | SDL_WINDOW_FULLSCREEN_DESKTOP);
-					}
-					else // is currently fullscreen, set it back to the prev state
-					{
-						curr_screen_size = last_non_fullscreen_size;
-						SDL_SetWindowFullscreen(sdl_window, window_flags);
-					}
-					SDL_GetWindowSize(sdl_window, &win_width, &win_height);
-					glViewport(0, 0, win_width, win_height);
-					break;
-				case SDLK_F10: // toggle screensizes, does nothing if fullscreen
-					switch (curr_screen_size)
-					{
-					case SCREENSIZE::fullscreen:
-						break;
-					case SCREENSIZE::is640x480:
-						curr_screen_size = SCREENSIZE::is1366x768;
-						SDL_SetWindowSize(sdl_window, 1366, 768);
-						SDL_GetWindowSize(sdl_window, &win_width, &win_height);
-						glViewport(0, 0, win_width, win_height);
-						break;
-					case SCREENSIZE::is1366x768:
-						curr_screen_size = SCREENSIZE::is640x480;
-						SDL_SetWindowSize(sdl_window, 640, 480);
-						SDL_GetWindowSize(sdl_window, &win_width, &win_height);
-						glViewport(0, 0, win_width, win_height);
-						break;
-					}
+  tty.c_cflag &= ~PARENB; // Clear parity bit, disabling parity (most common)
+  tty.c_cflag &= ~CSTOPB; // Clear stop field, only one stop bit used in communication (most common)
+  tty.c_cflag &= ~CSIZE; // Clear all bits that set the data size 
+  tty.c_cflag |= CS8; // 8 bits per byte (most common)
+  tty.c_cflag &= ~CRTSCTS; // Disable RTS/CTS hardware flow control (most common)
+  tty.c_cflag |= CREAD | CLOCAL; // Turn on READ & ignore ctrl lines (CLOCAL = 1)
 
-					break;
-				}
-			}
+  tty.c_lflag &= ~ICANON;
+  tty.c_lflag &= ~ECHO; // Disable echo
+  tty.c_lflag &= ~ECHOE; // Disable erasure
+  tty.c_lflag &= ~ECHONL; // Disable new-line echo
+  tty.c_lflag &= ~ISIG; // Disable interpretation of INTR, QUIT and SUSP
+  tty.c_iflag &= ~(IXON | IXOFF | IXANY); // Turn off s/w flow ctrl
+  tty.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL); // Disable any special handling of received bytes
 
-			// 2. update screen
+  tty.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
+  tty.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
+  // tty.c_oflag &= ~OXTABS; // Prevent conversion of tabs to spaces (NOT PRESENT ON LINUX)
+  // tty.c_oflag &= ~ONOEOT; // Prevent removal of C-d chars (0x004) in output (NOT PRESENT ON LINUX)
 
-			// clear screen
-			glClear(GL_COLOR_BUFFER_BIT);
+  tty.c_cc[VTIME] = 10;    // Wait for up to 1s (10 deciseconds), returning as soon as any data is received.
+  tty.c_cc[VMIN] = 0;
 
-			// add new updates
-			// your updated stuff to render here (future todo)
+  // Set in/out baud rate to be 9600
+  cfsetispeed(&tty, B115200);
+  cfsetospeed(&tty, B115200);
 
-			// swap to new updated screen to render
-			SDL_GL_SwapWindow(sdl_window);
-		}
-	}
+  // Save tty settings, also checking for error
+  if (tcsetattr(serial_port, TCSANOW, &tty) != 0) {
+      printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
+      return 1;
+  }
 
-	// clean up
-	SDL_DestroyWindow(sdl_window);
-	SDL_Quit();
+  // Write to serial port
+  unsigned char msg[] = { 'H', 'e', 'l', 'l', 'o', '\r' };
+  // write(serial_port, msg, sizeof(msg));
 
-	return 0;
+  if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+        printf("error initializing SDL: %s\n", SDL_GetError());
+  }
+
+  int WIDTH = 800;
+  int HEIGHT = 600;
+
+  SDL_Window* window = SDL_CreateWindow(
+      "GAME",
+      SDL_WINDOWPOS_CENTERED,
+      SDL_WINDOWPOS_CENTERED,
+      WIDTH,
+      HEIGHT,
+      0
+  );
+
+  SDL_Renderer* renderer = SDL_CreateRenderer(
+      window,
+      -1,
+      SDL_RENDERER_ACCELERATED
+  );
+
+  std::vector<Point> points = {
+      Point(-1, 1, 1),
+      Point(1, 1, 1),
+      Point(1, -1, 1),
+      Point(-1, -1, 1),
+      Point(-1, 1, -1),
+      Point(1, 1, -1),
+      Point(1, -1, -1),
+      Point(-1, -1, -1)
+  };
+
+  Point screenShift(WIDTH / 2, HEIGHT / 2);
+  Point screenShiftOpposite(-WIDTH / 2, -HEIGHT / 2);
+  int scale = 100;
+
+  for (Point& p : points) {
+      p.x = (scale * p.x + screenShift.x);
+      p.y = (scale * p.y + screenShift.y);
+      p.z = (scale * p.z + screenShift.z);
+  }
+
+  
+  char read_buf [256];
+  bool SDL_close = false;
+  while (!SDL_close) {
+
+    // Serial code
+    memset(&read_buf, '\0', sizeof(read_buf));  
+    int num_bytes = read(serial_port, &read_buf, sizeof(read_buf));
+    
+    if (num_bytes < 0) {
+      printf("Error reading: %s", strerror(errno));
+      return 1;
+    }
+
+    char *token;
+  
+    token = strtok(read_buf, ",");
+    
+    int count = 0;
+
+    double pitch, roll;
+    
+    while( token != NULL ) {
+      // printf( " %s", token );
+      count == 0 ? pitch = atof(token) : roll = atof(token);
+    
+      token = strtok(NULL, ",");
+      count++;
+    }
+    
+    printf("pitch = %.2f roll = %.2f\n", pitch, roll);
+
+
+    // SDL code
+    Matrix rotationXYZ = getRotationMatrix(pitch, roll);
+    SDL_Event event;
+
+    while (SDL_PollEvent(&event)) {
+        if (event.type == SDL_QUIT) {
+            SDL_close = true;
+        }
+    }
+
+    for (Point &p : points) {
+        p = translate(screenShiftOpposite, p);
+        p = transform(rotationXYZ, p);
+        p = translate(screenShift, p);
+    }
+
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    for (int i=0; i<4; i++) {
+        connect(renderer, points, i, (i + 1) % 4);
+        connect(renderer, points, i + 4, ((i + 1) % 4) + 4);
+        connect(renderer, points, i, i + 4);
+    }
+    SDL_RenderPresent(renderer);
+    SDL_Delay(3);
+  }
+
+  SDL_DestroyWindow(window);
+  SDL_Quit(); 
+
+
+  close(serial_port);
+  return 0; // success
 }

@@ -7,9 +7,9 @@ project(Render_Orientation VERSION 0.1.0)
 add_executable(Render_Orientation src/main.cpp)
 
 target_link_libraries(Render_Orientation 
-    SDL2main 
+    # SDL2main 
     SDL2     
-    GL
+    # GL
 )
 
 #set(CPACK_PROJECT_NAME ${PROJECT_NAME})

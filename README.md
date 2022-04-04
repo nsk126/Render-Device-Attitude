@@ -6,7 +6,7 @@ This is a tool i built to render 3D orientation of a IMU device that sents attit
 
 The tool depends on SDL2 and OpenGL.
 
-`sudo apt-get install libsdl2-dev`
+`sudo apt-get install libsdl2-dev libglfw3-dev libglew-dev libglm-dev`
 
 ## Build
 

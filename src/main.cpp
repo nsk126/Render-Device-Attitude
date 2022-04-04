@@ -108,7 +108,7 @@ Matrix getRotationMatrix(double alpha, double gamma) {
         {0, sin(alpha), cos(alpha)}
     };
 
-    double beta = 0; //0.002;
+    double beta = 0.0872; //0.002;
     Matrix rotationY = {
         {cos(beta), 0, sin(beta)},
         {0, 1, 0},
@@ -185,7 +185,7 @@ int main(int argc, char const *argv[])
   int HEIGHT = 600;
 
   SDL_Window* window = SDL_CreateWindow(
-      "GAME",
+      "IMU-CUBE3D",
       SDL_WINDOWPOS_CENTERED,
       SDL_WINDOWPOS_CENTERED,
       WIDTH,
@@ -199,27 +199,11 @@ int main(int argc, char const *argv[])
       SDL_RENDERER_ACCELERATED
   );
 
-  std::vector<Point> points = {
-      Point(-1, 1, 1),
-      Point(1, 1, 1),
-      Point(1, -1, 1),
-      Point(-1, -1, 1),
-      Point(-1, 1, -1),
-      Point(1, 1, -1),
-      Point(1, -1, -1),
-      Point(-1, -1, -1)
-  };
+  
 
   Point screenShift(WIDTH / 2, HEIGHT / 2);
   Point screenShiftOpposite(-WIDTH / 2, -HEIGHT / 2);
   int scale = 100;
-
-  for (Point& p : points) {
-      p.x = (scale * p.x + screenShift.x);
-      p.y = (scale * p.y + screenShift.y);
-      p.z = (scale * p.z + screenShift.z);
-  }
-
   
   char read_buf [256];
   bool SDL_close = false;
@@ -254,6 +238,23 @@ int main(int argc, char const *argv[])
 
 
     // SDL code
+    std::vector<Point> points = {
+        Point(-1, 1, 1),
+        Point(1, 1, 1),
+        Point(1, -1, 1),
+        Point(-1, -1, 1),
+        Point(-1, 1, -1),
+        Point(1, 1, -1),
+        Point(1, -1, -1),
+        Point(-1, -1, -1)
+    };
+
+    for (Point& p : points) {
+        p.x = (scale * p.x + screenShift.x);
+        p.y = (scale * p.y + screenShift.y);
+        p.z = (scale * p.z + screenShift.z);
+    }
+    
     Matrix rotationXYZ = getRotationMatrix(pitch, roll);
     SDL_Event event;
 

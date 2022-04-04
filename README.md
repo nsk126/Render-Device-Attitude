@@ -17,3 +17,7 @@ To build the file,
 2. Open bash in the build directory and execute the following commands.
     - `cmake ..`
     - `make`
+
+## Tested On
+
+1. Ubuntu 18.04 LTS

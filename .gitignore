@@ -1,3 +1,4 @@
 build/
 src/bp.cpp
+src/glfw_t.cpp
 .vscode/

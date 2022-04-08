@@ -18,6 +18,14 @@ To build the file,
     - `cmake ..`
     - `make`
 
+## Usage
+
+- Any Attitude & Heading data send over serial needs to follow the format `"pitch,roll,yaw\r"`. All values can be of floating point but they need a _comma_(,) delimiter.
+- Fix the serial baudrate to `115200`.
+- By default the serial port initiated in the program is `/dev/ttyACM0`. However, you can change the port in the script.
+- You can render a simple 2D representation of the orientation using SDL2 or a 3D representation using GLFW GLEW GLM(OpenGL).
+- If you are using OpenGL, remember to keep the shader files in your project directory.
+
 ## Tested On
 
 1. Ubuntu 18.04 LTS

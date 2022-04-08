@@ -18,19 +18,18 @@
 
 using namespace glm;
 
-int main(int argc, char const *argv[])
-{
-    // Termos Code
-	// Open the serial port. Change device path as needed (currently set to an standard FTDI USB-UART cable type device)
-    int serial_port = open("/dev/ttyACM0", O_RDWR);
 
-        printf("arg1 = %s\n", argv[1]);
+int main(int argc, char *argv[])
+{
+        
     // Create new termios struct, we call it 'tty' for convention
     struct termios tty;
+    int serial_port = open("/dev/ttyACM0", O_RDWR);
 
     // Read in existing settings, and handle any error
     if(tcgetattr(serial_port, &tty) != 0) {
         printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
+        printf("Check if Serialport /dev/ttyACM0 is working or use another serial port.\n");
         return 1;
     }
 
@@ -262,13 +261,24 @@ int main(int argc, char const *argv[])
         double pitch, roll;
         
         while( token != NULL ) {
-            // printf( " %s", token );
-            count == 0 ? pitch = atof(token) : roll = atof(token);
+
+            if (count == 0)
+            {
+                pitch = atof(token);
+
+            }else if (count == 1)
+            {
+                roll = atof(token);
+            }else if (count == 2)
+            {
+                // yaw = atof(token);
+            }
             
             token = strtok(NULL, ",");
             count++;
         }
 
+        // printf("pitch = %.2f roll = %.2f, yaw = %.2f\n", pitch, roll, yaw);
         printf("pitch = %.2f roll = %.2f\n", pitch, roll);
 
         // float roll = 45.0f * DEG_TO_RAD;
@@ -280,8 +290,8 @@ int main(int argc, char const *argv[])
         // Model matrix : an identity matrix (model will be at the origin)
 	    // glm::mat4 Model = glm::mat4(1.0f);
         
-        glm::mat4 Model = glm::rotate(glm::mat4(1.0f), (float)pitch, glm::vec3(1, 0, 0));
-        Model = glm::rotate(Model, yaw, glm::vec3(0, 1, 0));
+        glm::mat4 Model = glm::rotate(glm::mat4(1.0f), (float)pitch, glm::vec3(-1, 0, 0));
+        Model = glm::rotate(Model, (float)yaw, glm::vec3(0, 1, 0));
         Model = glm::rotate(Model, (float)roll, glm::vec3(0, 0, 1));
 
         // Our ModelViewProjection : multiplication of our 3 matrices

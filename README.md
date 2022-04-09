@@ -1,6 +1,6 @@
 # Render Orientation
 
-This is a tool i built to render 3D orientation of a IMU device that sents attitude and heading readings through a serial port.
+This is a tool I built to render 3D orientation of a IMU device that sends attitude and heading readings through a serial port.
 
 ## Depndencies
 

@@ -14,10 +14,10 @@ To build the file,
 
 1. Make a new folder in the project directory called **build**.
     - `mkdir build`
-2. Open bash in the build directory and execute the following commands.
+    - `cd build`
     - `cmake ..`
     - `make`
-
+ 
 ## Usage
 
 - Any Attitude & Heading data send over serial needs to follow the format `"pitch,roll,yaw\r"`. All values can be of floating point but they need a _comma_(,) delimiter.
